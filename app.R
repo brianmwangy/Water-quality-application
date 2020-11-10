@@ -45,7 +45,7 @@ uimodule<-function(id){
                        ),
                        column(6,
                               selectInput(ns("system"),
-                                          label = h4("Select system type"),
+                                          label = h4("Select system"),
                                           choices = c("All",cystem))
                        )
                      ),
@@ -56,15 +56,15 @@ uimodule<-function(id){
                                   tabBox(title = "",
                                          width = 12,
                                          tabPanel(title = h4("Count plots"),
-                                                  h4(tags$p("The plot shows the E.coli contamination levels count by system type and results round.")),
+                                                  h4(tags$p("The plot shows the E.coli contamination levels count by water system and results round.")),
                                                   plotOutput(ns("result"),
                                                              height = 500,width = "100%")),
                                          tabPanel(title = h4("Percentage plots"),
-                                                  h4(tags$p("The plot shows the E.coli contamination levels percent by system type and results round.")),
+                                                  h4(tags$p("The plot shows the E.coli contamination levels percent by water system and results round.")),
                                                   plotOutput(ns("perc"),
                                                              height = 500,width = "100%")),
                                          tabPanel(title = h4("General plots"), 
-                                                  h4(tags$p("The plot shows the average E.coli contamination levels by system type for all the rounds.")),
+                                                  h4(tags$p("The plot shows the average E.coli contamination levels by water system for all the rounds.")),
                                                   plotOutput(ns("gen"),
                                                              height = 400,width = "100%"))
                                   )
@@ -148,7 +148,7 @@ servermodule<-function(id){
         scale_y_continuous(breaks = c(0,2,4,6,8,10))+
         facet_wrap(~Round)+
         labs(
-          y="E.coli contamination levels count",
+          y="Water system count",
           fill="WHO Risk Level"
           
         )+
@@ -196,7 +196,7 @@ servermodule<-function(id){
         geom_bar(stat ="identity")+
         scale_y_continuous(breaks = c(0,20,40,60,80,100))+
         labs(
-          y="E.coli contamination levels percentage",
+          y="Percentage of water system",
           fill="WHO Risk Level",
           caption = "Sample(n) = 10"
         )+
@@ -241,7 +241,7 @@ servermodule<-function(id){
         scale_y_continuous(breaks = c(0,20,40,60,80,100))+
         coord_flip()+
         labs(
-          y="E.coli contamination levels percentage",
+          y="Percentage of water system",
           fill="WHO Risk Level",
           caption = "Sample(n) = 10"
         )+
