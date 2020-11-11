@@ -22,7 +22,7 @@ cystem<-unique(wq$System)
 
 ###########loading shapefiles#######
 labs<-read_csv("./www/labs_region.csv")
-ghana<-rmapshaper::ms_simplify(readOGR("./www/Shapefile.shp"))
+ghana<-rmapshaper::ms_simplify(readOGR("./www/Shapefile2.shp"))
 labshp<-readOGR("./www/labs.shp")
 ##############ui module##########
 uimodule<-function(id){
@@ -32,6 +32,9 @@ uimodule<-function(id){
                  h2(tags$b("Overview")),
                  h3(tags$p("This app displays water quality test results for systems enrolled in the Assurance Fund in Asutifi North, Ghana.")), 
                  h3(tags$p("The program was launched in March 2020 with 10 water systems. Water samples are tested once a month.")),
+                 h3(tags$p("The first round of water samples tested (Round 1) was in March 2020, the second round (Round 2) was in April, 
+                               third round (Round 3) in May, fourth round (Round 4) in June and fifth round (Round 5) in July.")),
+                 h3(tags$p("The water samples tested were from three main water systems: Handpump, Mechanized borehole, Piped system.")),
                  h3(tags$p("The results tab displays the summary plots, and the data tab displays the raw data.")),
                  h3(tags$p("The map displays the regional water quality testing laboratories for each region and the dynamic area of coverage."))
     ),
@@ -45,7 +48,7 @@ uimodule<-function(id){
                        ),
                        column(6,
                               selectInput(ns("system"),
-                                          label = h4("Select system"),
+                                          label = h4("Select water system"),
                                           choices = c("All",cystem))
                        )
                      ),
@@ -91,7 +94,7 @@ uimodule<-function(id){
                                 fluidRow(
                                   column(12,
                                          h4(tags$p("The map shows the coverage area for each regional lab in metres.")),
-                                         numericInput(ns("dist"),label = h4("Input the radius coverage(Metres)"),value = 150000),
+                                         numericInput(ns("dist"),label = h4("Input the radius coverage (Metres)"),value = 150000),
                                          leafletOutput(ns("map"),height = 500,width = "100%")  
                                          
                                   )
@@ -146,9 +149,13 @@ servermodule<-function(id){
         ggplot(aes(x=1,y=n,fill=WHO_Risk_Level))+
         geom_bar(stat = "identity")+
         scale_y_continuous(breaks = c(0,2,4,6,8,10))+
+        scale_fill_manual(values=c("deepskyblue2","mediumseagreen","indianred1"),
+                          breaks=c("Low","Intermediate","High"),
+                          labels=c("Low (<1 CFU/100mL)","Intermediate (1-9 CFU/100mL)","High (10-100 CFU/100mL )")
+        )+
         facet_wrap(~Round)+
         labs(
-          y="Water system count",
+          y="Water system count (n=10)",
           fill="WHO Risk Level"
           
         )+
@@ -195,8 +202,12 @@ servermodule<-function(id){
         ggplot(aes(x=1,y=10*n,fill=WHO_Risk_Level))+
         geom_bar(stat ="identity")+
         scale_y_continuous(breaks = c(0,20,40,60,80,100))+
+        scale_fill_manual(values=c("deepskyblue2","mediumseagreen","indianred1"),
+                          breaks=c("Low","Intermediate","High"),
+                          labels=c("Low (<1 CFU/100mL)","Intermediate (1-9 CFU/100mL)","High (10-100 CFU/100mL )")
+        )+
         labs(
-          y="Percentage of water system",
+          y="Percentage of water system (n=10)",
           fill="WHO Risk Level",
           caption = "Sample(n) = 10"
         )+
@@ -239,9 +250,13 @@ servermodule<-function(id){
         ggplot(aes(x=1,y=percentage,fill=WHO_Risk_Level))+
         geom_bar(stat ="identity")+
         scale_y_continuous(breaks = c(0,20,40,60,80,100))+
+        scale_fill_manual(values=c("deepskyblue2","mediumseagreen","indianred1"),
+                          breaks=c("Low","Intermediate","High"),
+                          labels=c("Low (<1 CFU/100mL)","Intermediate (1-9 CFU/100mL)","High (10-100 CFU/100mL )")
+        )+
         coord_flip()+
         labs(
-          y="Percentage of water system",
+          y="Percentage of water system (n=10)",
           fill="WHO Risk Level",
           caption = "Sample(n) = 10"
         )+
