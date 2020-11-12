@@ -19,6 +19,11 @@ wq<-read_csv("./www/wq_all.csv")
 var1<-unique(wq$Round)
 cystem<-unique(wq$System)
 parameter<-unique(wq$Parameter)
+ecoli<-read_csv("./www/ecoli.csv")
+ph<-read_csv("./www/pH.csv")
+turbidity<-read_csv("./www/turbidity.csv")
+conductivity<-read_csv("./www/conductivity.csv")
+
 
 
 ###########loading shapefiles#######
@@ -87,13 +92,22 @@ uimodule<-function(id){
 
                                   ),
                                    tabPanel(
-                                     title = h4("PH")
+                                     title = h4("PH"),
+                                     h4(tags$p("The plot shows the pH levels per water system for each of the rounds of results.")),
+                                     br(),
+                                     plotOutput(ns("ph"),width = "100%",height = 500)
                                    ),
                                    tabPanel(
-                                     title = h4("Turbidity (NTU)")
+                                     title = h4("Turbidity (NTU)"),
+                                     h4(tags$p("The plot shows the Turbidity (NTU) levels per water system for each of the rounds of results.")),
+                                     br(),
+                                     plotOutput(ns("turb"),width = "100%",height = 500)
                                    ),
                                    tabPanel(
-                                     title = h4("Conductivity (micromhos/cm)")
+                                     title = h4("Conductivity (micromhos/cm)"),
+                                     h4(tags$p("The plot shows the Conductivity (micromhos/cm) levels per water system for each of the rounds of results.")),
+                                     br(),
+                                     plotOutput(ns("cond"),width = "100%",height = 500)
                                    )
                              )
                                
@@ -139,7 +153,7 @@ uimodule<-function(id){
 servermodule<-function(id){
   moduleServer(id, function(input, output, session){
     
-    #####system type reactive function#######
+    #####all reactive function#######
     sys_react<-reactive({
       if(input$system!="All" ){
         wq %>% filter(System==input$system)
@@ -149,8 +163,6 @@ servermodule<-function(id){
       }
     }) #end
     
-    
-    ##########round reactive function########
     wq_react<-reactive({
       if(input$round!="All"){
         sys_react() %>% filter(Round==input$round)
@@ -160,11 +172,70 @@ servermodule<-function(id){
       }
     }) #end  
     
+    ###############ph reactive function######
+    sys_react2<-reactive({
+      if(input$system!="All" ){
+        ph %>% filter(System==input$system)
+      }
+      else{
+        ph
+      }
+    }) #end
     
-    ################parameter reactive function###########
+    
+    ph_react<-reactive({
+      if(input$round!="All"){
+        sys_react2() %>% filter(Round==input$round)
+      }
+      else{
+        sys_react2()
+      }
+    }) #end  
+    
+    ##############turbidity reactive function###########
+    sys_react3<-reactive({
+      if(input$system!="All" ){
+        turbidity %>% filter(System==input$system)
+      }
+      else{
+        turbidity
+      }
+    }) #end
+    
+    
+    turb_react<-reactive({
+      if(input$round!="All"){
+        sys_react3() %>% filter(Round==input$round)
+      }
+      else{
+        sys_react3()
+      }
+    }) #end  
+    
+    #####################conductivity##################
+    sys_react4<-reactive({
+      if(input$system!="All" ){
+        conductivity %>% filter(System==input$system)
+      }
+      else{
+        conductivity
+      }
+    }) #end
+    
+    
+    cond_react<-reactive({
+      if(input$round!="All"){
+        sys_react4() %>% filter(Round==input$round)
+      }
+      else{
+        sys_react4()
+      }
+    }) #end 
+    
+    ################table reactive function###########
     parameter_react<-reactive({
       wq_react() %>% filter(Parameter==input$peramater)
-    })
+    })  
     
     
     ########reactive function for area coverage######
@@ -173,9 +244,10 @@ servermodule<-function(id){
     })
     
     
+#####################################ECOLI########################################    
     ###########count plot##########
     output$result<-renderPlot({
-      parameter_react() %>% filter(!is.na(Value)) %>% count(Value,System,Round) %>%
+      wq_react() %>% filter(!is.na(Value) & Parameter=="Ecoli(CFU/100mL)") %>% count(Value,System,Round) %>%
         ggplot(aes(x=1,y=n,fill=Value))+
         geom_bar(stat = "identity")+
         scale_y_continuous(breaks = c(0,2,4,6,8,10))+
@@ -204,7 +276,7 @@ servermodule<-function(id){
     
     ########################percentage plot############
     output$perc<-renderPlot({
-      parameter_react() %>% filter(!is.na(Value)) %>% count(Value,System,Round) %>%
+      wq_react() %>% filter(!is.na(Value) & Parameter=="Ecoli(CFU/100mL)") %>% count(Value,System,Round) %>%
         #mutate(percentage=100*n/sum(n)) %>%
         ggplot(aes(x=1,y=10*n,fill=Value))+
         geom_bar(stat ="identity")+
@@ -236,7 +308,7 @@ servermodule<-function(id){
    
   ######################general plot#######################  
     output$gen<-renderPlot({
-      parameter_react() %>% filter(!is.na(Value)) %>% count(Value,System) %>%
+      wq_react() %>% filter(!is.na(Value) & Parameter=="Ecoli(CFU/100mL)" ) %>% count(Value,System) %>%
         mutate(percentage=round(100*n/sum(n)),0) %>%
         ggplot(aes(x=1,y=percentage,fill=Value))+
         geom_bar(stat ="identity")+
@@ -264,7 +336,74 @@ servermodule<-function(id){
           # legend.position = "bottom"
         )
     })#end
-
+    
+    
+#############################################PH##################################
+    output$ph<-renderPlot({
+        ggplot(data = ph_react(),aes(x=reorder(Name,Value),y=Value,fill=System))+
+        geom_col()+
+        facet_wrap(~Round)+
+        labs(
+          y="pH level (n=10)",
+          x="Water Kiosk",
+          fill="Water system",
+          caption = "Sample(n) = 10"
+        )+
+        theme(
+          axis.title = element_text(size = 12),
+          axis.text.y = element_text(size = 11),
+          axis.text.x = element_text(angle = 45,size = 9),
+          plot.caption = element_text(size = 12),
+          legend.text = element_text(size =12 ),
+          legend.title = element_text(size = 12)
+        )
+      
+    })
+    
+    
+#####################################Turbidity###################################
+    output$turb<-renderPlot({
+      ggplot(data = turb_react(),aes(x=reorder(Name,Value),y=Value,fill=System))+
+        geom_col()+
+        facet_wrap(~Round)+
+        labs(
+          y="Turbidity level (n=10)",
+          x="Water Kiosk",
+          fill="Water system",
+          caption = "Sample(n) = 10"
+        )+
+        theme(
+          axis.title = element_text(size = 12),
+          axis.text.y = element_text(size = 11),
+          axis.text.x = element_text(angle = 45,size = 9),
+          plot.caption = element_text(size = 12),
+          legend.text = element_text(size =12 ),
+          legend.title = element_text(size = 12)
+        )
+    })
+    
+    
+#####################################Conductivity################################
+    output$cond<-renderPlot({
+      ggplot(data = cond_react(),aes(x=reorder(Name,Value),y=Value,fill=System))+
+        geom_col()+
+        facet_wrap(~Round)+
+        labs(
+          y="Conductivity level (n=10)",
+          x="Water Kiosk",
+          fill="Water system",
+          caption = "Sample(n) = 10"
+        )+
+        theme(
+          axis.title = element_text(size = 12),
+          axis.text.y = element_text(size = 11),
+          axis.text.x = element_text(angle = 45,size = 9),
+          plot.caption = element_text(size = 12),
+          legend.text = element_text(size =12 ),
+          legend.title = element_text(size = 12)
+        )
+    })
+    
     ###############table output##########
     output$data<-renderDataTable({
       DT::datatable(parameter_react(), filter= "top")
