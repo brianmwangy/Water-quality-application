@@ -15,14 +15,15 @@ library(raster)
 
 
 ###########loading dataset##########
-wq<-read_csv("./www/wq.csv")
+wq<-read_csv("./www/wq_all.csv")
 var1<-unique(wq$Round)
 cystem<-unique(wq$System)
+parameter<-unique(wq$Parameter)
 
 
 ###########loading shapefiles#######
 labs<-read_csv("./www/labs_region.csv")
-ghana<-rmapshaper::ms_simplify(readOGR("./www/Shapefile2.shp"))
+ghana<-readOGR("./www/Shapefile2.shp")
 labshp<-readOGR("./www/labs.shp")
 ##############ui module##########
 uimodule<-function(id){
@@ -41,41 +42,63 @@ uimodule<-function(id){
     
     mainPanel(column(8,
                      fluidRow(
-                       column(6,
+                       column(4,
                               selectInput(ns("round"),
                                           label = h4("Select results round"),
                                           choices = c("All",var1))
                        ),
-                       column(6,
+                       column(4,
                               selectInput(ns("system"),
                                           label = h4("Select water system"),
                                           choices = c("All",cystem))
-                       )
+                       ),
+                       
+                       column(4,
+                              selectInput(ns("peramater"),
+                                          label = h4("Select parameter"),
+                                          choices = c(parameter)
+                                          )
+                              )
                      ),
                      tabsetPanel(
                        tabPanel(h3("Results"),
-                                br(),
-                                fluidRow(
-                                  tabBox(title = "",
-                                         width = 12,
-                                         tabPanel(title = h4("Count plots"),
-                                                  h4(tags$p("The plot shows the E.coli contamination levels count by water system and results round.")),
-                                                  plotOutput(ns("result"),
-                                                             height = 500,width = "100%")),
-                                         tabPanel(title = h4("Percentage plots"),
-                                                  h4(tags$p("The plot shows the E.coli contamination levels percent by water system and results round.")),
-                                                  plotOutput(ns("perc"),
-                                                             height = 500,width = "100%")),
-                                         tabPanel(title = h4("General plots"), 
-                                                  h4(tags$p("The plot shows the average E.coli contamination levels by water system for all the rounds.")),
-                                                  plotOutput(ns("gen"),
-                                                             height = 400,width = "100%"))
-                                  )
-                                )
-                                
-                                # fluidRow(
-                                #    plotlyOutput(ns("result"),height = 500,width = "100%")
-                                #          )
+                            br(),
+                            fluidRow(
+                             tabBox(
+                                 title="",
+                                 width=12,
+                                 tabPanel(
+                                 title = h4("Ecoli (CFU/100mL)"),
+                                 tabBox(title = "",
+                                        width = 12,
+                                        tabPanel(title = h4("Count plots"),
+                                                 h4(tags$p("The plot shows the E.coli contamination levels count by water system and results round.")),
+                                                 plotOutput(ns("result"),
+                                                            height = 500,width = "100%")),
+                                        tabPanel(title = h4("Percentage plots"),
+                                                 h4(tags$p("The plot shows the E.coli contamination levels percent by water system and results round.")),
+                                                 plotOutput(ns("perc"),
+                                                            height = 500,width = "100%")),
+                                        tabPanel(title = h4("General plots"), 
+                                                 h4(tags$p("The plot shows the average E.coli contamination levels by water system for all the rounds.")),
+                                                 plotOutput(ns("gen"),
+                                                            height = 400,width = "100%"))
+                                 ) #end ecoli results
+
+                                  ),
+                                   tabPanel(
+                                     title = h4("PH")
+                                   ),
+                                   tabPanel(
+                                     title = h4("Turbidity (NTU)")
+                                   ),
+                                   tabPanel(
+                                     title = h4("Conductivity (micromhos/cm)")
+                                   )
+                             )
+                               
+                                  
+                                ) #end fluidrow
                                 
                                 
                        ),
@@ -137,6 +160,13 @@ servermodule<-function(id){
       }
     }) #end  
     
+    
+    ################parameter reactive function###########
+    parameter_react<-reactive({
+      wq_react() %>% filter(Parameter==input$peramater)
+    })
+    
+    
     ########reactive function for area coverage######
     bufer<-reactive({
       buffer(labshp,width=input$dist,dissolve=FALSE)
@@ -145,8 +175,8 @@ servermodule<-function(id){
     
     ###########count plot##########
     output$result<-renderPlot({
-      wq_react() %>% count(WHO_Risk_Level,System,Round) %>%
-        ggplot(aes(x=1,y=n,fill=WHO_Risk_Level))+
+      parameter_react() %>% filter(!is.na(Value)) %>% count(Value,System,Round) %>%
+        ggplot(aes(x=1,y=n,fill=Value))+
         geom_bar(stat = "identity")+
         scale_y_continuous(breaks = c(0,2,4,6,8,10))+
         scale_fill_manual(values=c("deepskyblue2","mediumseagreen","indianred1"),
@@ -157,7 +187,7 @@ servermodule<-function(id){
         labs(
           y="Water system count (n=10)",
           fill="WHO Risk Level"
-          
+
         )+
         theme(
           axis.title.x = element_blank(),
@@ -168,38 +198,15 @@ servermodule<-function(id){
           strip.text = element_text(size = 10),
           legend.title = element_text(size = 12),
           legend.text = element_text(size = 12)
-        )  
-      
+        )
+
     })#end
     
-    
-    ##############percentage plot##########
-    # output$perc<-renderPlotly({
-    #     ggplotly(
-    # 
-    #         ggplot(data = wq_react(),aes(x=WHO_Risk_Level,group=1))+
-    #             geom_bar(aes(y=..prop..,fill=factor(..x..)),stat ="count")+
-    #             geom_text(aes( label = scales::percent(..prop..),
-    #                            y= ..prop.. ), stat= "count", vjust =0.5) +
-    #             labs(y="Percentage")+
-    #             scale_y_continuous(labels = scales::percent_format())+
-    #             facet_wrap(~Round)+
-    #             theme(
-    #                 axis.title.x = element_blank(),
-    #                 axis.text.x = element_text(angle = 45),
-    #                 #axis.text.y = element_text(size = 7),
-    #                 #axis.title.y =element_text(size=7,face = "bold"),
-    #                 axis.ticks.y = element_blank()
-    #             )
-    #     ) %>% layout(showlegend=FALSE)
-    # 
-    # })#end
-    
+    ########################percentage plot############
     output$perc<-renderPlot({
-      
-      wq_react() %>% count(WHO_Risk_Level,System,Round) %>%
+      parameter_react() %>% filter(!is.na(Value)) %>% count(Value,System,Round) %>%
         #mutate(percentage=100*n/sum(n)) %>%
-        ggplot(aes(x=1,y=10*n,fill=WHO_Risk_Level))+
+        ggplot(aes(x=1,y=10*n,fill=Value))+
         geom_bar(stat ="identity")+
         scale_y_continuous(breaks = c(0,20,40,60,80,100))+
         scale_fill_manual(values=c("deepskyblue2","mediumseagreen","indianred1"),
@@ -224,30 +231,14 @@ servermodule<-function(id){
           legend.text = element_text(size = 12),
           plot.caption = element_text(size = 14)
         )
-      
+
     })
-    
-    
-    ###############general plot###########
-    # output$gen<-renderPlotly({
-    #     ggplotly(
-    #         ggplot(data = sys_react(),aes(x=WHO_Risk_Level,group=1))+
-    #             geom_bar(aes(y=..prop..,fill=factor(..x..)),stat ="count")+
-    #             geom_text(aes( label = scales::percent(..prop..),
-    #                            y= ..prop.. ), stat= "count", vjust =0.5) +
-    #             labs(y="Average source type percentage",x="WHO Risk Level")+
-    #             scale_y_continuous(labels = scales::percent_format())+
-    #             theme(
-    #                 axis.title.x = element_blank()
-    #             )
-    #     ) %>% layout(showlegend=FALSE)
-    # 
-    # })#end
-    
+   
+  ######################general plot#######################  
     output$gen<-renderPlot({
-      sys_react() %>% count(WHO_Risk_Level,System) %>%
+      parameter_react() %>% filter(!is.na(Value)) %>% count(Value,System) %>%
         mutate(percentage=round(100*n/sum(n)),0) %>%
-        ggplot(aes(x=1,y=percentage,fill=WHO_Risk_Level))+
+        ggplot(aes(x=1,y=percentage,fill=Value))+
         geom_bar(stat ="identity")+
         scale_y_continuous(breaks = c(0,20,40,60,80,100))+
         scale_fill_manual(values=c("deepskyblue2","mediumseagreen","indianred1"),
@@ -273,10 +264,10 @@ servermodule<-function(id){
           # legend.position = "bottom"
         )
     })#end
-    
+
     ###############table output##########
     output$data<-renderDataTable({
-      DT::datatable(wq_react(), filter= "top")
+      DT::datatable(parameter_react(), filter= "top")
     })
     
     
@@ -310,36 +301,6 @@ servermodule<-function(id){
     
     ) #end of basemap
     
-    
-    #######observe event for the basemap###########
-    # observe({
-    # 
-    #     leafletProxy("map") %>%
-    #         clearShapes() %>%
-    #         addPolygons(
-    #             data = ghana,
-    #             fill = F,
-    #             color = "blue",
-    #             weight = 3
-    #         )%>%
-    #         addCircleMarkers(
-    #             data=labs,
-    #             fillColor = "red",
-    #             fillOpacity = 1.0,
-    #             radius = 8,
-    #             stroke = FALSE,
-    #             lat = ~lat,
-    #             lng = ~lon,
-    #             label = paste0(labs$`Treatment Plant`)
-    #         ) %>%
-    #         addPolylines(
-    #             data = bufer(),
-    #             color = "red",
-    #             weight = 2.5
-    #         )
-    # 
-    # }
-    # )
     
   })
 }
